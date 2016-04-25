@@ -1,0 +1,17 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+
+from pykdump.API import *
+
+
+def exit():
+    sys.exit()
+
+
+print()
+print('+++ Starting interactive shell ...')
+print('+++ Use exit() to exit')
+print()
+
+code.interact(local=locals())

@@ -1,0 +1,33 @@
+#!/usr/bin/env python
+
+import argparse
+import sys
+
+from pykdumplib.linux import sysfs
+from pykdumplib import utils
+
+
+@utils.add_arg('-a', '--addr', metavar='ADDR', default=None,
+               help='Starting node address (defaults to the root node '
+               'address)')
+@utils.add_arg('-l', '--level', metavar='LEVEL', default=0, type=int,
+               help='Max display depth (defaults to 0 (display the whole '
+               'tree))')
+@utils.add_help('Show sysfs directory tree')
+def do_show(args):
+    """
+    Show sysfs directory tree
+    """
+    if args.addr is None:
+        node = sysfs.Root()
+    else:
+        node = sysfs.Node(int(args.addr, 16))
+    node.pretty_print(level=args.level)
+
+
+if __name__ == '__main__':
+    aparser = argparse.ArgumentParser()
+    utils.add_subcommand_parsers(aparser, sys.modules[__name__])
+
+    aargs = aparser.parse_args()
+    aargs.func(aargs)
