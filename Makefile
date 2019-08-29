@@ -39,7 +39,7 @@ $(PYKDUMP_SO): $(CRASH) Makefile.pykdump
 # Download and build crash
 #
 crash: $(CRASH)
-$(CRASH): $(CRASH_DIR)/Makefile
+$(CRASH):
 	rm -rf .source $(CRASH_DIR)
 	mkdir .source
 	cd .source && pull-lp-source -d crash $(shell lsb_release -c -s)
