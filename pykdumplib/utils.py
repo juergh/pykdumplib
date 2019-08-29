@@ -1,5 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
+# Copyright (c) 2019 Canonical Ltd.
 # Copyright (c) 2016 Hewlett-Packard Development Company, L.P.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,11 +18,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-from __future__ import print_function
-
-from pykdump.API import *
+from pykdump.API import Addr, readSU
 from pykdump.wrapcrash import StructResult
-
 
 _font_attr = {
     'bold': '\033[1m',
@@ -39,27 +37,24 @@ _font_attr = {
     'off': '\033[0m',
 }
 
-
 _font_attr_type = {
     'link': ('cyan', 'bold'),
     'dir': ('blue', 'bold'),
 }
 
-
 def cprint(*args, **kwargs):
     '''
     Color print
     '''
-    type = kwargs.pop('type')
-    if type is not None:
-        for t in _font_attr_type[type]:
+    ctype = kwargs.pop('type')
+    if ctype is not None:
+        for t in _font_attr_type[ctype]:
             print(_font_attr[t], end='')
 
     print(*args, **kwargs)
 
-    if type is not None:
+    if ctype is not None:
         print(_font_attr['off'], end='')
-
 
 def singleton(cls):
     '''
@@ -83,7 +78,6 @@ def singleton(cls):
 
     return _getinstance
 
-
 def dec(name, *args, **kwargs):
     '''
     Decorator for subcommand arguments and help text
@@ -95,20 +89,18 @@ def dec(name, *args, **kwargs):
         return func
     return _decorator
 
-
 def add_help(*args, **kwargs):
     return dec('help', *args, **kwargs)
 
-
 def add_arg(*args, **kwargs):
     return dec('arg', *args, **kwargs)
-
 
 def add_subcommand_parsers(parser, module):
     '''
     Add subparsers for the subcommands
     '''
-    subparsers = parser.add_subparsers(title='commands')
+    subparsers = parser.add_subparsers(title='commands', dest='commmand',
+                                       required=True)
 
     # Walk through the 'do_' functions
     for attr in (a for a in dir(module) if a.startswith('do_')):

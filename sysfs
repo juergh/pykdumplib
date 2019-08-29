@@ -1,4 +1,22 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+#
+# Copyright (c) 2019 Canonical Ltd.
+# Copyright (c) 2016 Hewlett-Packard Development Company, L.P.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 import argparse
 import sys
@@ -6,6 +24,10 @@ import sys
 from pykdumplib.linux import sysfs
 from pykdumplib import utils
 
+# epython is caching imports, so force a reload
+from importlib import reload
+sysfs = reload(sysfs)
+utils = reload(utils)
 
 @utils.add_arg('-a', '--addr', metavar='ADDR', default=None,
                help='Starting node address (defaults to the root node '
@@ -23,7 +45,6 @@ def do_show(args):
     else:
         node = sysfs.Node(int(args.addr, 16))
     node.pretty_print(level=args.level)
-
 
 if __name__ == '__main__':
     aparser = argparse.ArgumentParser()
