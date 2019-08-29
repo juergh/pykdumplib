@@ -1,0 +1,87 @@
+#! -*- makefile -*-
+#
+# Copyright (c) 2019 Canonical Ltd.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+
+# The name of the current Makefile, this needs to be at the beginning, before
+# other Makefiles are included
+THIS_MAKEFILE := $(lastword $(MAKEFILE_LIST))
+
+# Include the Makefile with the crash specific options
+-include crash.mk
+
+CWD := $(CURDIR)
+
+GDB_DIR := $(CRASH_DIR)/gdb-7.6/gdb
+GDB_INCLUDES := -I$(GDB_DIR) -I$(GDB_DIR)/config -I$(GDB_DIR)/../bfd \
+	  -I$(GDB_DIR)/../include -I$(GDB_DIR)/../intl -I$(GDB_DIR)/common
+
+CC := gcc
+
+PYTHON := python3
+PYTHON_CFLAGS := $(shell python3-config --cflags)
+PYTHON_LDFLAGS := $(shell python3-config --ldflags)
+PYTHON_PATH := $(shell python3 -c "import sys; print(':'.join(sys.path))")
+
+DEFINES := -D$(CRASH_TARGET) -DCRASHVERS=\"$(CRASH_VERSION)\" \
+	-DPYSTDLIBDIR=\"$(PYTHON_PATH)\" \
+	-DPYEXTRADIR=\"\"
+
+OBJS := epython.o functions.o gdbspec.o
+
+all: crash.mk
+	$(MAKE) -f $(THIS_MAKEFILE) pykdump.so
+
+crash.mk: $(CRASH_DIR)/Makefile $(CRASH_DIR)/crash
+	grep -P '^TARGET=|^TARGET_CFLAGS=' $(CRASH_DIR)/Makefile | \
+		sed -e 's,^,CRASH_,' > $@
+	$(CRASH_DIR)/crash --version | grep '^crash ' | \
+		sed -e 's,^crash ,CRASH_VERSION=,' >> $@
+
+%.o: %.c pykdump.h
+	$(CC) $(PYTHON_CFLAGS) $(DEFINES) -I/usr/include/crash -fPIC -c $< -o $@
+
+gdbspec.o: gdbspec.c
+	$(CC) $(PYTHON_CFLAGS) $(GDB_INCLUDES) -DGDB7 -DGDB76 -fPIC -c $< -o $@
+
+pyparsing.pyc: pyparsing_py3.py
+	$(PYTHON) -O -c 'import py_compile;py_compile.compile("$<", "./$@")'
+
+pylib.zip: pyparsing.pyc
+	zip $@ pyparsing.pyc
+
+pykdump_c.o: $(OBJS)
+	gcc -Wall -g -nostartfiles -shared -o $@ $(OBJS) -fPIC \
+		-D$(CRASH_TARGET) $(CRASH_TARGET_CFLAGS) $(PYTHON_LDFLAGS)
+
+pykdump_c.so: pykdump_c.o pylib.zip
+	cat $^ >$@
+	zip -A $@
+	chmod +x $@
+
+API.so: pykdump_c.so
+	cp $< $@
+	find ../pykdump -name '*.pyc' | xargs rm -f
+	$(PYTHON) ../../compileall.py -b -f ../pykdump
+	cd ../ && find pykdump -type f -name '*.pyc' | zip $(CURDIR)/$@ -@
+
+pykdump.so: API.so
+	cp $< $@
+	cd ../progs && zip $(CURDIR)/$@ PyKdumpInit.py
+
+clean:
+	rm -rf crash.mk *.o *.so *.zip *.pyc
