@@ -1,0 +1,44 @@
+What's new in version 0.3?
+--------------------------
+
+
+Bugs fixed, some new features added:
+
+- a new tPtr class ('typed pointer')
+- we don't use pexpect and PTY-driver, instead we create a script for crash and
+  run it
+- new functions: uvtop and readProcessMem to read process's virtual memory,
+  FD_ISSET and sLong to manipulate bits, getListSize to get the size of the
+  linked list without returning its elements
+- we determine HZ by consulting crash's machdep structure
+- added global options to specify sysmap/vmlinux/vmcore manually:
+   --vmcore=myvmcore
+   --vmlinux /tmp/vmlinux
+
+  (options are separated from arguments either with space or = sign)
+
+
+What's new in version 0.2?
+--------------------------
+
+Many minor bugs fixed, some new features added:
+
+- Support for multidimensional arrays
+
+- Pointers to struct/union now are not just addresses but objects that
+  contain type info
+
+- New functions to read lists
+
+- Pointers to functions are now processed differently from generic pointers
+  This is needed on IA64 where they are really Function Descriptors
+
+- Performance improvements in struct/union field access
+
+- Documentation updated
+
+
+- The companion 'LinuxDump' package now contains a powerful utility
+  'xportshow.py' that can print many types of networking information:
+  interface info, tunables, NETFILTER, routing, summary, IPv4/6 connections
+  for kernels 2.4.20 - 2.6.20

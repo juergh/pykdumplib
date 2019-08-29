@@ -1,0 +1,6 @@
+errs
+*bak
+*zip
+*.mk
+README
+.emacs.desktop

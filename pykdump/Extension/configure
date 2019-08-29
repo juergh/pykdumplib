@@ -1,0 +1,123 @@
+#! /bin/bash
+
+# This is not a GNU-autoconf configure but rather a small utility
+# to create the local.mk to be included in makefiles
+
+# Before using this script, you need to build both Python and crash from
+# sources. After that, you run this script specifying directories you
+# used for these builds.
+
+Usage() {
+  cat <<_ACEOF
+'configure' lets you specify the location of Python and Crash source trees.
+
+Usage: $0 -c CRASHDIR [-p PYTHONDIR]
+
+Configuration:
+  -h, --help              display this help and exit
+   -p DIR		  specify the Python source tree dir
+   -c DIR		  specify the Crash source tree dir
+_ACEOF
+}
+
+# Are there any arguments at all? If not, output help
+if test "${1+set}" != set
+then
+   Usage;exit 0
+fi   
+
+while getopts "c:p:d:h" opt
+do
+    case $opt in
+      p)
+        # Strip the trailing '/' if any
+        PYTHONDIR=`echo $OPTARG | sed 'sT/$TT'`
+        ;;
+      c)
+        # Strip the trailing '/' if any
+        CRASHDIR=`echo $OPTARG | sed 'sT/$TT'`
+        ;;
+      d)
+        # Strip the trailing '/' if any
+        DIR32_64=`echo $OPTARG | sed 'sT/$TT'`
+        ;;
+      h)
+        Usage;exit 0
+        ;;
+      esac
+done
+
+build_one_flavor () {
+
+    # Is CRASHDIR set? This is mandatory!
+    if test "${CRASHDIR+set}" != set; then
+	echo "CRASHDIR not specified" >&2
+	exit 1
+    fi    
+
+    # We don't try to build with OS-installed Python anymore,
+    # using Python built from sources is now mandatory
+
+    if test "${PYTHONDIR+set}" != set; then
+        # Not set, no need to do anything else
+	echo "You need to build Python from sources, see the documentation."
+	echo "After that you specify the sourcetree location using -p PYTHONTREE"
+	exit 1
+    fi
+
+    # Python compiled from sources for a static build
+
+    PYTHON=${PYTHONDIR}/python
+    # Check whether we can run the Python from that directory
+    if ! ${PYTHON} -c "import os"; then
+	echo "Cannot use the source-tree Python, did you build it properly?"
+	exit 1
+    fi
+    if test "${DIR32_64+set}" != set; then
+	${PYTHON} pyconf.py --crashdir=${CRASHDIR}
+    else
+        # Build from subdir
+	${PYTHON} ../pyconf.py --crashdir=${CRASHDIR}
+    fi
+}
+
+# If DIR32_64 is set, we should have a special directory layout
+if test "${DIR32_64+set}" != set; then
+    build_one_flavor
+    exit 0
+fi    
+
+# Check whether we have a proper layout
+
+lastvers () {
+  local dlist n
+  dlist=($*)
+  n=${#dlist[*]}
+  dirfound=${dlist[$n-1]}
+}
+
+# Step I. We should have $DIR32_64/Python*/{X86,X86_64} to exist. If there are
+# several versions of Python, use the latest one
+
+lastvers ${DIR32_64}/Python-3*
+PYTHONTOP=$dirfound
+
+lastvers ${DIR32_64}/crash-*
+CRASHTOP=$dirfound
+
+TOPDIR=$PWD
+
+for t in X86 X86_64
+do
+  CRASHDIR=${CRASHTOP}/$t
+  PYTHONDIR=${PYTHONTOP}/$t
+  if [ ! -d "$t" ]; then
+    mkdir $t
+  fi
+  cd $t
+  ln -sf ../Makefile .
+  
+  build_one_flavor
+
+  cd $TOPDIR
+done
