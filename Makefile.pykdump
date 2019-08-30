@@ -17,20 +17,19 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# The name of the current Makefile, this needs to be at the beginning, before
-# other Makefiles are included
-THIS_MAKEFILE := $(lastword $(MAKEFILE_LIST))
-
-# Include the Makefile with the crash specific options
--include crash.mk
+CRASH_TARGET := $(shell awk -F= '$$1 == "TARGET" { print $$2 }' \
+	$(CRASH_DIR)/Makefile)
+CRASH_TARGET_CFLAGS := $(shell awk -F= '$$1 == "TARGET_CFLAGS" { print $$2 }' \
+	$(CRASH_DIR)/Makefile)
+CRASH_VERSION := $(shell $(CRASH_DIR)/crash --version | \
+	awk '$$1 == "crash" { print $$2 }')
 
 CWD := $(CURDIR)
+CC := gcc
 
 GDB_DIR := $(CRASH_DIR)/gdb-7.6/gdb
 GDB_INCLUDES := -I$(GDB_DIR) -I$(GDB_DIR)/config -I$(GDB_DIR)/../bfd \
 	  -I$(GDB_DIR)/../include -I$(GDB_DIR)/../intl -I$(GDB_DIR)/common
-
-CC := gcc
 
 PYTHON := python3
 PYTHON_CFLAGS := $(shell python3-config --cflags)
@@ -43,14 +42,7 @@ DEFINES := -D$(CRASH_TARGET) -DCRASHVERS=\"$(CRASH_VERSION)\" \
 
 OBJS := epython.o functions.o gdbspec.o
 
-all: crash.mk
-	$(MAKE) -f $(THIS_MAKEFILE) pykdump.so
-
-crash.mk: $(CRASH_DIR)/Makefile $(CRASH_DIR)/crash
-	grep -P '^TARGET=|^TARGET_CFLAGS=' $(CRASH_DIR)/Makefile | \
-		sed -e 's,^,CRASH_,' > $@
-	$(CRASH_DIR)/crash --version | grep '^crash ' | \
-		sed -e 's,^crash ,CRASH_VERSION=,' >> $@
+all: pykdump.so
 
 %.o: %.c pykdump.h
 	$(CC) $(PYTHON_CFLAGS) $(DEFINES) -I/usr/include/crash -fPIC -c $< -o $@
@@ -84,4 +76,4 @@ pykdump.so: API.so
 	cd ../progs && zip $(CURDIR)/$@ PyKdumpInit.py
 
 clean:
-	rm -rf crash.mk *.o *.so *.zip *.pyc
+	rm -rf *.o *.so *.zip *.pyc
