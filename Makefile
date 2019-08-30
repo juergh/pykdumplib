@@ -18,20 +18,42 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-PYKDUMP_SO := $(CURDIR)/pykdump/Extension/pykdump.so
-CRASH := $(CURDIR)/crash/crash
+PYKDUMP_SO_DIR := $(CURDIR)/pykdump/Extension
+PYKDUMP_SO := $(PYKDUMP_SO_DIR)/pykdump.so
 
-PYKDUMP_SO_DIR := $(dir $(PYKDUMP_SO))
-CRASH_DIR := $(dir $(CRASH))
+CRASH_DIR := $(CURDIR)/.crash
+CRASH := $(CRASH_DIR)/crash
+
+TMPDIR := $(CURDIR)/.tmp
+DESTDIR ?= $(CURDIR)/.build
 
 MAKE_PYKDUMP := $(MAKE) -C $(PYKDUMP_SO_DIR) -f Makefile.pykdump \
 	CRASH_DIR=$(CRASH_DIR)
+
+SCRIPTS := shell sysfs
+
+all: crash pykdump install
+
+#
+# Install the pykdump and pykdumplib files to DESTDIR
+#
+install:
+	rm -rf $(DESTDIR)
+	install -d $(DESTDIR)
+
+	# Install the core pykdump files
+	install $(PYKDUMP_SO) $(DESTDIR)
+	rsync -a pykdump/pykdump $(DESTDIR)/
+
+	# Install the pykdumplib files
+	install $(SCRIPTS) $(DESTDIR)
+	rsync -a pykdumplib $(DESTDIR)/
 
 #
 # Build the pykdump extension for crash
 #
 pykdump: $(PYKDUMP_SO)
-$(PYKDUMP_SO): $(CRASH) Makefile.pykdump
+$(PYKDUMP_SO): Makefile.pykdump
 	cp Makefile.pykdump $(PYKDUMP_SO_DIR)
 	$(MAKE_PYKDUMP)
 
@@ -40,18 +62,18 @@ $(PYKDUMP_SO): $(CRASH) Makefile.pykdump
 #
 crash: $(CRASH)
 $(CRASH):
-	rm -rf .source $(CRASH_DIR)
-	mkdir .source
-	cd .source && pull-lp-source -d crash $(shell lsb_release -c -s)
-	dpkg-source -x .source/*.dsc $(CRASH_DIR)
-	rm -rf .source
+	test -d $(TMPDIR) && rm -rf $(TMPDIR) || true
+	test -d $(CRASH_DIR) && rm -rf $(CRASH_DIR) || true
+	mkdir -p $(TMPDIR)
+	cd $(TMPDIR) && pull-lp-source -d crash $(shell lsb_release -c -s)
+	cd $(TMPDIR) && dpkg-source -x *.dsc $(CRASH_DIR)
 	cd $(CRASH_DIR) && debian/rules build
 
 #
 # Cleaning rule
 #
 clean:
-	rm -rf .source $(CRASH_DIR)
+	rm -rf $(CRASH_DIR) $(TMPDIR) $(DESTDIR)
 	$(MAKE_PYKDUMP) clean
 
 .PHONY: crash pykdump
