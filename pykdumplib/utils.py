@@ -99,8 +99,8 @@ def add_subcommand_parsers(parser, module):
     '''
     Add subparsers for the subcommands
     '''
-    subparsers = parser.add_subparsers(title='commands', dest='commmand',
-                                       required=True)
+    subparsers = parser.add_subparsers(title='commands', dest='commmand')
+    subparsers.required = True
 
     # Walk through the 'do_' functions
     for attr in (a for a in dir(module) if a.startswith('do_')):
