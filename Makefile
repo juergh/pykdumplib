@@ -45,7 +45,7 @@ $(CRASH):
 	cd .source && pull-lp-source -d crash $(shell lsb_release -c -s)
 	dpkg-source -x .source/*.dsc $(CRASH_DIR)
 	rm -rf .source
-	cd $(CRASH_DIR) && make
+	cd $(CRASH_DIR) && debian/rules build
 
 #
 # Cleaning rule
