@@ -17,21 +17,27 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
+ifneq ($(wildcard $(CRASH_DIR)/Makefile),)
 CRASH_TARGET := $(shell awk -F= '$$1 == "TARGET" { print $$2 }' \
 	$(CRASH_DIR)/Makefile)
 CRASH_TARGET_CFLAGS := $(shell awk -F= '$$1 == "TARGET_CFLAGS" { print $$2 }' \
 	$(CRASH_DIR)/Makefile)
+endif
+
+ifneq ($(wildcard $(CRASH_DIR)/crash),)
 CRASH_VERSION := $(shell $(CRASH_DIR)/crash --version | \
 	awk '$$1 == "crash" { print $$2 }')
+endif
 
 CWD := $(CURDIR)
 CC := gcc
+
+CRASH_INCLUDES := -I$(CRASH_DIR)
 
 GDB_DIR := $(CRASH_DIR)/gdb-7.6/gdb
 GDB_INCLUDES := -I$(GDB_DIR) -I$(GDB_DIR)/config -I$(GDB_DIR)/../bfd \
 	  -I$(GDB_DIR)/../include -I$(GDB_DIR)/../intl -I$(GDB_DIR)/common
 
-PYTHON := python3
 PYTHON_CFLAGS := $(shell python3-config --cflags)
 PYTHON_LDFLAGS := $(shell python3-config --ldflags)
 PYTHON_PATH := $(shell python3 -c "import sys; print(':'.join(sys.path))")
@@ -45,35 +51,14 @@ OBJS := epython.o functions.o gdbspec.o
 all: pykdump.so
 
 %.o: %.c pykdump.h
-	$(CC) $(PYTHON_CFLAGS) $(DEFINES) -I/usr/include/crash -fPIC -c $< -o $@
+	$(CC) $(PYTHON_CFLAGS) $(DEFINES) $(CRASH_INCLUDES) -fPIC -c $< -o $@
 
 gdbspec.o: gdbspec.c
 	$(CC) $(PYTHON_CFLAGS) $(GDB_INCLUDES) -DGDB7 -DGDB76 -fPIC -c $< -o $@
 
-pyparsing.pyc: pyparsing_py3.py
-	$(PYTHON) -O -c 'import py_compile;py_compile.compile("$<", "./$@")'
-
-pylib.zip: pyparsing.pyc
-	zip $@ pyparsing.pyc
-
-pykdump_c.o: $(OBJS)
+pykdump.so: $(OBJS)
 	gcc -Wall -g -nostartfiles -shared -o $@ $(OBJS) -fPIC \
 		-D$(CRASH_TARGET) $(CRASH_TARGET_CFLAGS) $(PYTHON_LDFLAGS)
-
-pykdump_c.so: pykdump_c.o pylib.zip
-	cat $^ >$@
-	zip -A $@
-	chmod +x $@
-
-API.so: pykdump_c.so
-	cp $< $@
-	find ../pykdump -name '*.pyc' | xargs rm -f
-	$(PYTHON) ../../compileall.py -b -f ../pykdump
-	cd ../ && find pykdump -type f -name '*.pyc' | zip $(CURDIR)/$@ -@
-
-pykdump.so: API.so
-	cp $< $@
-	cd ../progs && zip $(CURDIR)/$@ PyKdumpInit.py
 
 clean:
 	rm -rf *.o *.so *.zip *.pyc
