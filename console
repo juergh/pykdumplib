@@ -19,6 +19,7 @@
 # 02110-1301, USA.
 
 import code
+import sys
 
 def exit():
     sys.exit()
