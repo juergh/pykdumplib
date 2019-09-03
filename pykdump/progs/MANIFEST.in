@@ -1,3 +1,0 @@
-include NEWS
-recursive-include LinuxDump *.py
-include dev.py xportshow.py crashinfo.py
