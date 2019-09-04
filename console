@@ -19,14 +19,7 @@
 # 02110-1301, USA.
 
 import code
-import sys
+import site
 
-def exit():
-    sys.exit()
-
-print()
-print('+++ Starting interactive shell ...')
-print('+++ Use exit() or Ctrl-D (i.e. EOF) to exit')
-print()
-
+site.setquit()
 code.interact(local=locals())
