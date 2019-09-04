@@ -22,6 +22,7 @@ import importlib
 import inspect
 import os
 import platform
+import re
 
 from pykdump.API import Addr, readSU
 from pykdump.wrapcrash import StructResult
@@ -141,8 +142,25 @@ def include(filename):
     caller_globals = caller.frame.f_globals
 
     # The full path of the file to include
-    include = os.path.join(os.path.dirname(caller_filename), filename)
+    include = os.path.join(os.path.dirname(caller_filename), filename + ".py")
 
     # Execute the provided filename, ensure all its declarations are added to
     # the caller's namespace
     exec(open(include).read(), caller_globals)
+
+def get__all__(module):
+    '''
+    Parse the given module (file) and return a list of declared variables
+    and functions
+    '''
+    result = []
+    with open(module.__file__) as fh:
+        for line in fh:
+            # Variable declarations
+            m = re.match('^([a-z0-9_]+)\s*=', line, flags=re.IGNORECASE)
+            if not m:
+                # Function declarations
+                m = re.match('^def\s+([a-z0-9_]+)', line, flags=re.IGNORECASE)
+            if m:
+                result.append(m.group(1))
+    return result
