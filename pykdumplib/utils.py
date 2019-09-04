@@ -18,6 +18,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
+import importlib
+import inspect
+import os
+import platform
+
 from pykdump.API import Addr, readSU
 from pykdump.wrapcrash import StructResult
 
@@ -118,3 +123,26 @@ def add_subcommand_parsers(parser, module):
             parser.add_argument(*args, **kwargs)
 
         parser.set_defaults(func=cmd_cb)
+
+def arch_import(module):
+    '''
+    Import and return an architecture specific module
+    '''
+    return importlib.import_module("pykdumplib.linux.arch." +
+                                   platform.machine() + "." + module)
+
+def include(filename):
+    '''
+    Include a file, relative to the caller's path
+    '''
+    # The caller, its filename and its globals
+    caller = inspect.stack()[1]
+    caller_filename = caller.filename
+    caller_globals = caller.frame.f_globals
+
+    # The full path of the file to include
+    include = os.path.join(os.path.dirname(caller_filename), filename)
+
+    # Execute the provided filename, ensure all its declarations are added to
+    # the caller's namespace
+    exec(open(include).read(), caller_globals)
