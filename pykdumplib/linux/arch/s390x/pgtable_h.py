@@ -39,10 +39,17 @@ _REGION3_ENTRY_EMPTY = (_REGION_ENTRY_TYPE_R3 | _REGION_ENTRY_INVALID)
 
 _REGION3_ENTRY_LARGE = 0x0400
 
-_SEGMENT_ENTRY_ORIGIN  = ~0x7ff
-_SEGMENT_ENTRY_PROTECT = 0x200
-_SEGMENT_ENTRY_NOEXEC  = 0x100
-_SEGMENT_ENTRY_INVALID = 0x20
+_REGION_ENTRY_BITS       = 0xfffffffffffff22f
+_REGION_ENTRY_BITS_LARGE = 0xffffffff8000fe2f
+
+# Bits in the segment table entry
+_SEGMENT_ENTRY_BITS       = 0xfffffffffffffe33
+_SEGMENT_ENTRY_BITS_LARGE = 0xfffffffffff0ff33
+_SEGMENT_ENTRY_ORIGIN     = ~0x7ff
+_SEGMENT_ENTRY_PROTECT    = 0x200
+_SEGMENT_ENTRY_NOEXEC     = 0x100
+_SEGMENT_ENTRY_INVALID    = 0x20
+_SEGMENT_ENTRY_TYPE_MASK  = 0x0c
 
 _SEGMENT_ENTRY       = (0)
 _SEGMENT_ENTRY_EMPTY = (_SEGMENT_ENTRY_INVALID)
@@ -86,6 +93,11 @@ def pgd_none(pgd):
         return 0
     return (pgd_val(pgd) & _REGION_ENTRY_INVALID) != 0
 
+def pgd_bad(pgd):
+    if ((pgd_val(pgd) & _REGION_ENTRY_TYPE_MASK) < _REGION_ENTRY_TYPE_R1):
+        return 0
+    return (pgd_val(pgd) & ~_REGION_ENTRY_BITS) != 0
+
 def p4d_folded(p4d):
     return (p4d_val(p4d) & _REGION_ENTRY_TYPE_MASK) < _REGION_ENTRY_TYPE_R2
 
@@ -93,6 +105,14 @@ def p4d_none(p4d):
     if (p4d_folded(p4d)):
         return 0
     return p4d_val(p4d) == _REGION2_ENTRY_EMPTY
+
+def p4d_bad(p4d):
+    ptype = p4d_val(p4d) & _REGION_ENTRY_TYPE_MASK
+    if (ptype > _REGION_ENTRY_TYPE_R2):
+        return 1
+    if (ptype < _REGION_ENTRY_TYPE_R2):
+        return 0
+    return (p4d_val(p4d) & ~_REGION_ENTRY_BITS) != 0
 
 def pud_folded(pud):
     return (pud_val(pud) & _REGION_ENTRY_TYPE_MASK) < _REGION_ENTRY_TYPE_R3
@@ -107,11 +127,28 @@ def pud_large(pud):
         return 0
     return (pud_val(pud) & _REGION3_ENTRY_LARGE) != 0
 
+def pud_bad(pud):
+    ptype = pud_val(pud) & _REGION_ENTRY_TYPE_MASK
+    if (ptype > _REGION_ENTRY_TYPE_R3):
+        return 1
+    if (ptype < _REGION_ENTRY_TYPE_R3):
+        return 0
+    if (pud_large(pud)):
+        return (pud_val(pud) & ~_REGION_ENTRY_BITS_LARGE) != 0
+    return (pud_val(pud) & ~_REGION_ENTRY_BITS) != 0
+
 def pmd_none(pmd):
     return pmd_val(pmd) == _SEGMENT_ENTRY_EMPTY
 
 def pmd_large(pmd):
     return (pmd_val(pmd) & _SEGMENT_ENTRY_LARGE) != 0
+
+def pmd_bad(pmd):
+    if ((pmd_val(pmd) & _SEGMENT_ENTRY_TYPE_MASK) > 0):
+        return 1
+    if (pmd_large(pmd)):
+        return (pmd_val(pmd) & ~_SEGMENT_ENTRY_BITS_LARGE) != 0
+    return (pmd_val(pmd) & ~_SEGMENT_ENTRY_BITS) != 0;
 
 def pgd_index(address): return (((address) >> PGDIR_SHIFT) & (PTRS_PER_PGD-1))
 def p4d_index(address): return (((address) >> P4D_SHIFT) & (PTRS_PER_P4D-1))
