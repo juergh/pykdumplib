@@ -27,7 +27,7 @@ __PAGE_BAD = "__PAGE_BAD"
 
 # File: arch/s390x/mm/dump_pagetables.c
 
-max_addr = 0
+g_max_addr = 0
 
 class addr_marker():
     def __init__(self, start_address, name):
@@ -43,7 +43,7 @@ VMEMMAP_NR = 3
 VMALLOC_NR = 4
 MODULES_NR = 5
 
-address_markers = [
+g_address_markers = [
     addr_marker(0, "Identity Mapping"),
     addr_marker(readSymbol('_stext'), "Kernel Image Start"),
     addr_marker(readSymbol('_end'), "Kernel Image End"),
@@ -87,7 +87,7 @@ def note_page(st, new_prot, level):
         # First entry
         st.current_prot = new_prot
         st.level = level
-        st.marker = address_markers
+        st.marker = g_address_markers
         print("---[ {:s} ] ---".format(st.marker[0].name))
     elif prot != cur or level != st.level or \
          st.current_address >= st.marker[1].start_address:
@@ -109,7 +109,7 @@ def note_page(st, new_prot, level):
 
 def walk_pte_level(st, pmd, addr):
     for i in range(0, PTRS_PER_PTE):
-        if addr >= max_addr:
+        if addr >= g_max_addr:
             break
         st.current_address = addr
         pte = pte_offset_kernel(pmd, addr)
@@ -121,7 +121,7 @@ def walk_pte_level(st, pmd, addr):
 def walk_pmd_level(st, pud, addr):
     # FIXME: (juergh) Check for CONFIG_KASAN
     for i in range(0, PTRS_PER_PMD):
-        if addr >= max_addr:
+        if addr >= g_max_addr:
             break
         st.current_address = addr
         pmd = pmd_offset(pud, addr)
@@ -142,7 +142,7 @@ def walk_pmd_level(st, pud, addr):
 def walk_pud_level(st, p4d, addr):
     # FIXME: (juergh) Check for CONFIG_KASAN
     for i in range (0, PTRS_PER_PUD):
-        if addr >= max_addr:
+        if addr >= g_max_addr:
             break
         st.current_address = addr
         pud = pud_offset(p4d, addr)
@@ -163,7 +163,7 @@ def walk_pud_level(st, p4d, addr):
 def walk_p4d_level(st, pgd, addr):
     # FIXME: (juergh) Check for CONFIG_KASAN
     for i in range(0, PTRS_PER_P4D):
-        if addr >= max_addr:
+        if addr >= g_max_addr:
             break
         st.current_address = addr
         p4d = p4d_offset(pgd, addr)
@@ -180,7 +180,7 @@ def walk_pgd_level():
 
     st = pg_state()
     for i in range(0, PTRS_PER_PGD):
-        if addr >= max_addr:
+        if addr >= g_max_addr:
             break
         st.current_address = addr
         pgd = pgd_offset_k(addr)
@@ -193,20 +193,25 @@ def walk_pgd_level():
         addr += PGDIR_SIZE
 
     # Flush out the last page
-    st.current_address = max_addr
+    st.current_address = g_max_addr
     note_page(st, 0, 0);
 
-def ptdump_show():
-    global max_addr
-    global address_markers
+def ptdump_show(max_addr=0):
+    global g_max_addr
+    global g_address_markers
 
-    S390_lowcore = readSU("struct lowcore", 0)
+    if max_addr == 0:
+        S390_lowcore = readSU("struct lowcore", 0)
+        if S390_lowcore.kernel_asce == 0:
+            print("Warning: S390_lowcore.kernel_asce = 0")
 
-    max_addr = (S390_lowcore.kernel_asce & _REGION_ENTRY_TYPE_MASK) >> 2
-    max_addr = 1 << (max_addr * 11 + 31)
+        g_max_addr = (S390_lowcore.kernel_asce & _REGION_ENTRY_TYPE_MASK) >> 2
+        g_max_addr = 1 << (max_addr * 11 + 31)
+    else:
+        g_max_addr = max_addr
 
-    address_markers[MODULES_NR].start_address = readSymbol("MODULES_VADDR")
-    address_markers[VMEMMAP_NR].start_address = Addr(readSymbol("vmemmap"))
-    address_markers[VMALLOC_NR].start_address = readSymbol("VMALLOC_START")
+    g_address_markers[MODULES_NR].start_address = readSymbol("MODULES_VADDR")
+    g_address_markers[VMEMMAP_NR].start_address = Addr(readSymbol("vmemmap"))
+    g_address_markers[VMALLOC_NR].start_address = readSymbol("VMALLOC_START")
 
     walk_pgd_level()
