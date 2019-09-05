@@ -23,6 +23,8 @@ from pykdumplib import utils
 utils.include("page_h")
 utils.include("pgtable_h")
 
+__PAGE_BAD = "__PAGE_BAD"
+
 # File: arch/s390x/mm/dump_pagetables.c
 
 max_addr = 0
@@ -64,7 +66,10 @@ def print_prot(pr, level):
     level_name = ("ASCE", "PGD", "PUD", "PMD", "PTE")
 
     fmt = "{:4s} {:2s} {:2s} ({:08x})"
-    if pr & _PAGE_INVALID:
+    if pr == __PAGE_BAD:
+        a1 = "B!"
+        a2 = ""
+    elif pr & _PAGE_INVALID:
         a1 = "I"
         a2 = ""
     else:
@@ -120,7 +125,9 @@ def walk_pmd_level(st, pud, addr):
             break
         st.current_address = addr
         pmd = pmd_offset(pud, addr)
-        if not pmd_none(pmd):
+        if pmd_bad(pmd):
+            note_page(st, __PAGE_BAD, 3)
+        elif not pmd_none(pmd):
             if pmd_large(pmd):
                 prot = pmd_val(pmd) & \
                     (_SEGMENT_ENTRY_PROTECT |
@@ -139,7 +146,9 @@ def walk_pud_level(st, p4d, addr):
             break
         st.current_address = addr
         pud = pud_offset(p4d, addr)
-        if not pud_none(pud):
+        if pud_bad(pud):
+            note_page(st, __PAGE_BAD, 2)
+        elif not pud_none(pud):
             if pud_large(pud):
                 prot = pud_val & \
                     (_REGION_ENTRY_PROTECT |
@@ -158,7 +167,9 @@ def walk_p4d_level(st, pgd, addr):
             break
         st.current_address = addr
         p4d = p4d_offset(pgd, addr)
-        if not p4d_none(p4d):
+        if p4d_bad(p4d):
+            note_page(st, __PAGE_BAD, 2)
+        elif not p4d_none(p4d):
             walk_pud_level(st, p4d, addr)
         else:
             not_page(st, _PAGE_INVALID, 2)
@@ -173,7 +184,9 @@ def walk_pgd_level():
             break
         st.current_address = addr
         pgd = pgd_offset_k(addr)
-        if not pgd_none(pgd):
+        if pgd_bad(pgd):
+            note_page(st, __PAGE_BAD, 2)
+        elif not pgd_none(pgd):
             walk_p4d_level(st, pgd, addr)
         else:
             note_page(st, _PAGE_INVALID, 1)
