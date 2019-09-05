@@ -17,8 +17,29 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
+import argparse
+import sys
+
 from pykdumplib import utils
 
 dump_pagetables_c = utils.arch_import("dump_pagetables_c")
 
-dump_pagetables_c.ptdump_show()
+# Auto base detection so that we can use hex numbers
+def auto_int(x):
+    return int(x, 0)
+
+@utils.add_arg('-m', '--max-addr', metavar='ADDR', type=auto_int, default=0,
+               help='Maximum address')
+@utils.add_help('Show a pagetable')
+def do_show(args):
+    """
+    Show pagetables
+    """
+    dump_pagetables_c.ptdump_show(max_addr=args.max_addr)
+
+if __name__ == '__main__':
+    aparser = argparse.ArgumentParser()
+    utils.add_subcommand_parsers(aparser, sys.modules[__name__])
+
+    aargs = aparser.parse_args()
+    aargs.func(aargs)
