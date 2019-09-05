@@ -87,7 +87,7 @@ def note_page(st, new_prot, level):
         # First entry
         st.current_prot = new_prot
         st.level = level
-        st.marker = g_address_markers
+        st.marker = g_address_markers.copy()
         print("---[ {:s} ] ---".format(st.marker[0].name))
     elif prot != cur or level != st.level or \
          st.current_address >= st.marker[1].start_address:
